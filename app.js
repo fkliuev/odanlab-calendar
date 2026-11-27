@@ -233,7 +233,9 @@ document.addEventListener('click',safely(async ev=>{
 }));
 $('#people').onclick=peopleDialog;$('#all').onclick=safely(async()=>{picked=[];await load()});$('#google').onclick=googlePanel;
 safely(async()=>{
- const ticket=new URLSearchParams(location.hash.slice(1)).get('ticket');
+ const fragment=new URLSearchParams(location.hash.slice(1));
+ const ticket=fragment.get('ticket');
+ if(fragment.has('google')){history.replaceState(null,'',location.pathname);await api('google/finish','POST',{ticket:fragment.get('google')});tell('Google Календарь подключён.')}
  if(ticket){
    history.replaceState(null,'',location.pathname);
    const proof=sessionStorage.getItem('olab.proof');sessionStorage.removeItem('olab.proof');
