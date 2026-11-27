@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Неделя лаборатории · OdanLab</title><link rel="stylesheet" href="./style.css"><script defer src="./config.js"></script><script defer src="./app.js"></script></head>
+<body><header><strong>OdanLab</strong><span>Lab of Effective Catalysis</span><span id="identity"></span></header>
+<main><section id="signin" class="login"><h1>Календарь лаборатории</h1><p>Введите личный одноразовый код от координатора.</p><form id="login"><label>Код входа<input name="code" type="password" required autocomplete="one-time-code"></label><button class="primary">Войти</button></form></section>
+<section id="workspace" hidden><div class="toolbar"><h1>Календарь лаборатории</h1><div><button data-new="presence">Моё присутствие</button><button data-new="busy">Занятость</button><button data-new="meeting" class="primary">Предложить встречу</button></div></div>
+<section class="card"><div class="toolbar"><h2 id="scope"></h2><div><button id="people">Выбрать людей</button><button id="all" hidden>Вся лаборатория</button></div></div>
+<nav><div><button data-nav="-1" aria-label="Предыдущая неделя">‹</button><strong id="week"></strong><button data-nav="1" aria-label="Следующая неделя">›</button><button data-nav="0">Сегодня</button></div><div><button id="seminar" data-new="seminar" hidden>Семинар</button><button id="google">Google Календарь</button></div></nav>
+<div class="week"><div class="dates" id="dates"></div><div id="grid" class="grid"></div><aside id="roster"></aside></div>
+<footer><span><i class="presence"></i>Присутствие</span><span><i class="slot"></i>Общее окно от 30 мин</span><span><i class="busy"></i>Занято</span><span><i class="seminar"></i>Семинар</span><span>МСК</span></footer></section>
+<p class="sub" id="sync"></p><button class="link" id="logout">Выйти</button></section><p id="notice" role="status"></p></main>
+<dialog id="dialog"><div class="toolbar"><h2 id="dialog-title"></h2><button id="close" aria-label="Закрыть">×</button></div><div id="contents"></div><p id="error" role="alert"></p></dialog></body></html>
