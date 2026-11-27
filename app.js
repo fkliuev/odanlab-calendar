@@ -38,7 +38,18 @@ async function save(path,method,data){
  submitting=true;
  try{await api(path,method,data);close();await load();tell('Сохранено.')}finally{submitting=false}
 }
-$('#login').onsubmit=safely(async ev=>{ev.preventDefault();const result=await api('login','POST',{code:ev.target.code.value.trim()});session=result.session;sessionStorage.setItem('olab.session',session);ev.target.reset();tell('');await load()});
+function base64url(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+$('#sso-login').onclick=safely(async()=>{
+ const proof=base64url(crypto.getRandomValues(new Uint8Array(40)));
+ const challenge=base64url(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(proof))));
+ sessionStorage.setItem('olab.proof',proof);
+ location.assign(window.CALENDAR_API+'/api/odan/start?challenge='+challenge);
+});
+async function signinStatus(){
+ const cfg=await api('auth/status');
+ $('#sso-login').disabled=!cfg.ready;
+ $('#auth-status').textContent=cfg.ready?'Пароль вводится на странице авторизации OdanLab.':'Вход станет доступен после регистрации календаря в SSO OdanLab.';
+}
 $('#logout').onclick=safely(async()=>{await api('logout','POST',{});sessionStorage.removeItem('olab.session');location.reload()});
 const selectors=()=>picked.length?picked:state.members.map(m=>m.id);
 function position(a,b){return 'top:'+100*(a-first)/(last-first)+'%;height:calc('+100*(b-a)/(last-first)+'% - 1px);'}
@@ -221,7 +232,14 @@ document.addEventListener('click',safely(async ev=>{
  if(b.dataset.new)editor(b.dataset.new);
 }));
 $('#people').onclick=peopleDialog;$('#all').onclick=safely(async()=>{picked=[];await load()});$('#google').onclick=googlePanel;
-const invite=new URLSearchParams(location.hash.slice(1)).get('invite');
-if(invite){history.replaceState(null,'',location.pathname);$('#login').code.value=invite;session=''}
-else safely(load)();
+safely(async()=>{
+ const ticket=new URLSearchParams(location.hash.slice(1)).get('ticket');
+ if(ticket){
+   history.replaceState(null,'',location.pathname);
+   const proof=sessionStorage.getItem('olab.proof');sessionStorage.removeItem('olab.proof');
+   const result=await api('odan/exchange','POST',{ticket,proof});
+   session=result.session;sessionStorage.setItem('olab.session',session);
+ }
+ if(session)await load();else await signinStatus();
+})();
 setInterval(()=>{if(session&&!dialog.open&&!drag&&!document.hidden)safely(load)()},45000);
