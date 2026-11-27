@@ -1,7 +1,12 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Неделя лаборатории · OdanLab</title><link rel="stylesheet" href="./style.css"><script defer src="./config.js"></script><script defer src="./app.js"></script></head>
 <body><header><strong>OdanLab</strong><span>Lab of Effective Catalysis</span><span id="identity"></span></header>
-<main><section id="signin" class="login"><h1>Календарь лаборатории</h1><p>Войдите с учётной записью OdanLab, чтобы увидеть расписание своей лаборатории.</p><button class="primary" id="sso-login">Войти через OdanLab</button><p class="sub" id="auth-status" role="status"></p></section>
+<main><section id="signin" class="login"><h1>Календарь лаборатории</h1><form id="pilot-login" hidden>
+<p>Введите почту из группы Lab of Effective Catalysis и общий пароль пилота.</p>
+<label>Почта участника<input type="email" name="email" required autocomplete="email" autocapitalize="none" spellcheck="false" maxlength="320"></label>
+<label>Общий пароль пилота<input type="password" name="password" required autocomplete="off" maxlength="128"></label>
+<button class="primary" type="submit">Войти в календарь</button>
+</form><button class="primary" id="sso-login" disabled hidden>Войти через OdanLab</button><p class="sub" id="auth-status" role="status">Проверяем доступность входа…</p></section>
 <section id="workspace" hidden><div class="toolbar"><h1>Календарь лаборатории</h1><div><button data-new="presence">Моё присутствие</button><button data-new="busy">Занятость</button><button data-new="meeting" class="primary">Предложить встречу</button></div></div>
 <section class="card"><div class="toolbar"><h2 id="scope"></h2><div><button id="people">Выбрать людей</button><button id="all" hidden>Вся лаборатория</button></div></div>
 <nav><div><button data-nav="-1" aria-label="Предыдущая неделя">‹</button><strong id="week"></strong><button data-nav="1" aria-label="Следующая неделя">›</button><button data-nav="0">Сегодня</button></div><div><button id="seminar" data-new="seminar" hidden>Семинар</button><button id="google">Google Календарь</button></div></nav>

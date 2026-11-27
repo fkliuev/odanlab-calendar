@@ -20,7 +20,11 @@ async function api(path,method='GET',data){
  const res=await fetch(window.CALENDAR_API+'/api/'+path,{method,credentials:'omit',headers:{...(session?{Authorization:'Bearer '+session}:{}),...(data?{'Content-Type':'application/json'}:{})},body:data?JSON.stringify(data):undefined});
  const out=await res.json();
  if(!res.ok){
-   if(res.status===401&&session){session='';sessionStorage.removeItem('olab.session');if(dialog.open)close();$('#workspace').hidden=true;$('#signin').hidden=false}
+   if(res.status===401&&session){
+     session='';state=null;picked=[];sequence++;sessionStorage.removeItem('olab.session');
+     if(dialog.open)close();$('#identity').textContent='';$('#workspace').hidden=true;$('#signin').hidden=false;
+     await signinStatus();
+   }
    throw Error(out.error||'Не удалось выполнить запрос.');
  }
  return out;
@@ -47,9 +51,22 @@ $('#sso-login').onclick=safely(async()=>{
 });
 async function signinStatus(){
  const cfg=await api('auth/status');
+ $('#pilot-login').hidden=!cfg.temporary;
+ $('#sso-login').hidden=!!cfg.temporary;
  $('#sso-login').disabled=!cfg.ready;
- $('#auth-status').textContent=cfg.ready?'Пароль вводится на странице авторизации OdanLab.':'Вход станет доступен после регистрации календаря в SSO OdanLab.';
+ $('#auth-status').textContent=cfg.temporary?'Временный вход для участников лаборатории.':cfg.ready?'Пароль вводится на странице авторизации OdanLab.':'Вход станет доступен после регистрации календаря в SSO OdanLab.';
 }
+$('#pilot-login').onsubmit=safely(async ev=>{
+ ev.preventDefault();
+ const form=ev.currentTarget, button=form.querySelector('button');
+ if(button.disabled)return;
+ button.disabled=true;tell('');
+ try{
+   const result=await api('pilot/login','POST',{email:form.elements.email.value.trim(),password:form.elements.password.value});
+   session=result.session;sessionStorage.setItem('olab.session',session);form.reset();
+   await load();
+ }finally{button.disabled=false}
+});
 $('#logout').onclick=safely(async()=>{await api('logout','POST',{});sessionStorage.removeItem('olab.session');location.reload()});
 const selectors=()=>picked.length?picked:state.members.map(m=>m.id);
 function position(a,b){return 'top:'+100*(a-first)/(last-first)+'%;height:calc('+100*(b-a)/(last-first)+'% - 1px);'}
@@ -83,7 +100,7 @@ function render(){
  first=Math.min(540,...events.map(e=>60*Math.floor(e.a/60)));last=Math.max(1080,...events.map(e=>60*Math.ceil(e.b/60)));
  document.documentElement.style.setProperty('--hours',(last-first)/60);
  $('#scope').textContent=picked.length?picked.map(who).join(', '):'Вся лаборатория';
- $('#identity').textContent=who(me);$('#all').hidden=!picked.length;
+ $('#identity').textContent=who(me)+(state.temporary?' · пилот':'');$('#all').hidden=!picked.length;
  $('#seminar').hidden=members.find(m=>m.id===me).role==='member';
  $('#week').textContent=fmt(days[0],{day:'numeric',month:'short'})+' – '+fmt(days[6],{day:'numeric',month:'short',year:'numeric'});
  const shifts=d=>events.filter(e=>e.kind==='presence'&&e.day===d&&selectors().includes(e.owner));
@@ -159,6 +176,7 @@ function detail(e){
  });
 }
 function googlePanel(){
+ if(state.temporary){modal('Google Календарь','<p>Личный календарь можно будет подключить после входа через OdanLab.</p>');return}
  const g=state.google;
  let html=!g.configured?'<p>Подключение Google ещё не настроено администратором. Расписание и приглашения доступны в OdanLab.</p>':!g.connected?'<p>Учитывать занятость основного календаря. После подтверждения встречи OdanLab добавит её в ваш Google Календарь. По умолчанию коллеги видят только «Занято».</p><div class="actions">'+button('Подключить Google Календарь','connect',true)+'</div>':'<p>Подключён основной календарь.</p><p class="sub">'+(g.pending?'Ожидают синхронизации · '+g.pending:'Подтверждённые встречи записываются в Google.')+'</p><h3>Кому открыть тему и участников</h3><div class="list">'+state.members.filter(m=>m.id!==state.me).map(m=>'<label class="row"><input data-reader="'+esc(m.id)+'" type="checkbox" '+(g.readers.includes(m.id)?'checked':'')+'>'+esc(m.name)+'</label>').join('')+'</div><div class="actions">'+button('Сохранить доступ','readers',true)+button('Отключить','disconnect')+'</div>';
  modal('Мой Google Календарь',html);
