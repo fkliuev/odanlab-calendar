@@ -69,7 +69,7 @@ $('#pilot-login').onsubmit=safely(async ev=>{
 });
 $('#logout').onclick=safely(async()=>{await api('logout','POST',{});sessionStorage.removeItem('olab.session');location.reload()});
 const selectors=()=>picked.length?picked:state.members.map(m=>m.id);
-function position(a,b){return 'top:'+100*(a-first)/(last-first)+'%;height:calc('+100*(b-a)/(last-first)+'% - 1px);'}
+function position(a,b){a=Math.max(first,a);b=Math.min(last,b);return 'top:'+100*(a-first)/(last-first)+'%;height:calc('+100*(b-a)/(last-first)+'% - 1px);'}
 const handles='<i class="edge top" data-edge="start"></i><i class="edge bottom" data-edge="end"></i>';
 function eventButton(e){
  const label=e.kind==='presence'?(e.owner===state.me?'Я в лабе':who(e.owner)):e.title||'Занято';
@@ -77,10 +77,12 @@ function eventButton(e){
 }
 function gridCol(d){
  const shown=selectors();
- const present=state.events.filter(e=>e.day===d&&e.kind==='presence'&&(e.owner===state.me?shown.includes(e.owner):picked.length===1&&picked[0]===e.owner));
- const records=state.events.filter(e=>e.day===d&&e.kind!=='presence'&&(e.kind==='seminar'||(picked.length?e.people.some(id=>picked.includes(id)):e.owner===state.me||e.people.includes(state.me)||e.kind==='meeting'&&e.title!=='Занято')));
+ const present=state.events.filter(e=>e.day===d&&e.b>first&&e.a<last&&e.kind==='presence'&&(e.owner===state.me?shown.includes(e.owner):picked.length===1&&picked[0]===e.owner));
+ const records=state.events.filter(e=>e.day===d&&e.b>first&&e.a<last&&e.kind!=='presence'&&(e.kind==='seminar'||(picked.length?e.people.some(id=>picked.includes(id)):e.owner===state.me||e.people.includes(state.me)||e.kind==='meeting'&&e.title!=='Занято')));
+ const implicit=shown.length===1&&!present.length?(state.presence[d][shown[0]]||[]):[];
  const attr=e=>' data-id="'+esc(e.id)+'" data-day="'+d+'" '+(e.editable?'data-edit="1" ':'')+'aria-label="'+esc((e.title|| (e.kind==='presence'?'Присутствие':'Занято'))+' '+span(e.a,e.b))+'"';
  let html=present.map(e=>'<button class="mark presence" '+attr(e)+' style="'+position(e.a,e.b)+'">'+eventButton(e)+'</button>').join('');
+ html+=implicit.map(([a,b])=>'<span class="mark presence" style="pointer-events:none;'+position(a,b)+'">В лаборатории</span>').join('');
  html+=(state.windows[d]||[]).map(([a,b])=>'<button class="mark slot" data-slot="'+a+','+b+'" style="'+position(a,b)+'">'+span(a,b)+'</button>').join('');
  const waiting=records.slice().sort((a,b)=>a.a-b.a||b.b-a.b);
  for(let i=0;i<waiting.length;){
@@ -97,18 +99,18 @@ function gridCol(d){
 }
 function render(){
  const {members,events,days,me}=state;
- first=Math.min(540,...events.map(e=>60*Math.floor(e.a/60)));last=Math.max(1080,...events.map(e=>60*Math.ceil(e.b/60)));
+ first=480;last=1320;
  document.documentElement.style.setProperty('--hours',(last-first)/60);
  $('#scope').textContent=picked.length?picked.map(who).join(', '):'Вся лаборатория';
  $('#identity').textContent=who(me)+(state.temporary?' · пилот':'');$('#all').hidden=!picked.length;
  $('#seminar').hidden=members.find(m=>m.id===me).role==='member';
  $('#week').textContent=fmt(days[0],{day:'numeric',month:'short'})+' – '+fmt(days[6],{day:'numeric',month:'short',year:'numeric'});
- const shifts=d=>events.filter(e=>e.kind==='presence'&&e.day===d&&selectors().includes(e.owner));
+ const shifts=d=>selectors().flatMap(owner=>(state.presence[d][owner]||[]).map(([a,b])=>({owner,a,b})));
  $('#dates').innerHTML='<span></span>'+days.map(d=>'<button data-date="'+d+'" class="'+(d===day?'active':'')+'">'+fmt(d,{weekday:'short'})+'<b>'+Number(d.slice(8))+'</b><small>'+new Set(shifts(d).map(e=>e.owner)).size+' в лабе</small></button>').join('');
  const ticks=[];for(let m=first;m<=last;m+=60)ticks.push('<span style="top:'+100*(m-first)/(last-first)+'%">'+clock(m)+'</span>');
  $('#grid').innerHTML='<div class="axis">'+ticks.join('')+'</div>'+days.map(gridCol).join('');
  const rows=shifts(day), owners=[...new Set(rows.sort((a,b)=>a.a-b.a).map(e=>e.owner))];
- $('#roster').innerHTML='<h3>'+fmt(day,{weekday:'long',day:'numeric',month:'long'})+'</h3>'+(owners.length?'<ul>'+owners.map(id=>'<li>'+esc(who(id))+'<small>'+rows.filter(e=>e.owner===id).map(e=>span(e.a,e.b)).join(', ')+'</small></li>').join('')+'</ul>':'<p class="sub">Пока никто не указал часы присутствия.</p>');
+ $('#roster').innerHTML='<h3>'+fmt(day,{weekday:'long',day:'numeric',month:'long'})+'</h3>'+(owners.length?'<ul>'+owners.map(id=>'<li>'+esc(who(id))+'<small>'+rows.filter(e=>e.owner===id).map(e=>span(e.a,e.b)).join(', ')+'</small></li>').join('')+'</ul>':'<p class="sub">В этот день никто из выбранных участников не в лаборатории.</p>');
  $('#sync').textContent=state.unavailable.length?'Ожидаем данные Google · '+state.unavailable.map(who).join(', '):'';
 }
 function peopleDialog(){
@@ -121,14 +123,14 @@ function peopleDialog(){
 function button(label,action,primary=false){return '<button type="button" '+(primary?'class="primary" ':'')+'data-act="'+action+'">'+label+'</button>'}
 const options=(list,value)=>list.map(([k,label])=>'<option value="'+esc(k)+'" '+(k===value?'selected':'')+'>'+esc(label)+'</option>').join('');
 function editor(kind,record={},move=false){
- const existing=!!record.id,personal=['presence','busy'].includes(kind);
+ const existing=!!record.id,personal=['presence','busy','absence'].includes(kind);
  const d=record.day||day,a=record.a??600,b=record.b??(kind==='meeting'?a+30:660);
  const dateTime='<label class="line">Дата<input type="date" id="ed" required value="'+d+'"></label><div class="times"><label class="line">Начало, МСК<input type="time" id="ea" required value="'+clock(a)+'"></label><label class="line">Конец, МСК<input type="time" id="eb" required value="'+clock(b%1440)+'"></label></div>';
- const titles={presence:'Буду в лаборатории',busy:'Занято',meeting:move?'Перенести встречу':'Предложить встречу',seminar:'Семинар лаборатории'};
+ const titles={absence:'Отсутствие',presence:'Буду в лаборатории',busy:'Занято',meeting:move?'Перенести встречу':'Предложить встречу',seminar:'Семинар лаборатории'};
  let fields=dateTime;
- if(personal&&!existing)fields='<label class="line">Как отметить<select id="kind">'+options([['presence',titles.presence],['busy',titles.busy]],kind)+'</select></label>'+fields;
+ if(personal&&!existing)fields='<label class="line">Как отметить<select id="kind">'+options([['presence',titles.presence],['busy',titles.busy],['absence',titles.absence]],kind)+'</select></label>'+fields;
  if(kind==='presence'&&!existing)fields+='<label class="line">Повторять ежедневно до<input type="date" id="until" value="'+d+'"></label>';
- if(!move&&kind!=='presence')fields+='<label class="line">'+(kind==='busy'?'Заметка для себя':'Тема')+'<input id="topic" maxlength="160" value="'+esc(record.title||'')+'" '+(kind!=='busy'?'required':'')+'></label>';
+ if(!move&&kind!=='presence'&&kind!=='absence')fields+='<label class="line">'+(kind==='busy'?'Заметка для себя':'Тема')+'<input id="topic" maxlength="160" value="'+esc(record.title||'')+'" '+(kind!=='busy'?'required':'')+'></label>';
  if(kind==='meeting'&&!existing){
    fields+='<h3>Участники встречи</h3><div class="list">'+state.members.filter(m=>m.id!==state.me).map(m=>'<label class="row">'+esc(m.name)+' <select data-guest="'+esc(m.id)+'">'+options([['','Не приглашён'],['yes','Обязательный'],['optional','По желанию']],picked.includes(m.id)?'yes':'')+'</select></label>').join('')+'</div>';
  }
@@ -139,6 +141,7 @@ function editor(kind,record={},move=false){
  if($('#until'))$('#ed').onchange=()=>{if($('#until').value<$('#ed').value)$('#until').value=$('#ed').value};
  $('#editform').onsubmit=safely(async ev=>{
    ev.preventDefault();let data={...values(),kind,rev:record.rev,title:$('#topic')?.value??record.title??''};
+   if(kind==='absence'){data.kind='busy';data.title='Отсутствие'}
    if($('#until'))data.through=$('#until').value;
    if($('#speaker'))data.speaker=$('#speaker').value;
    if(kind==='meeting'&&!existing){data.guests=Object.fromEntries([...document.querySelectorAll('[data-guest]')].filter(el=>el.value).map(el=>[el.dataset.guest,el.value==='yes']))}
