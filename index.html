@@ -7,7 +7,7 @@
 <label>Общий пароль пилота<input type="password" name="password" required autocomplete="off" maxlength="128"></label>
 <button class="primary" type="submit">Войти в календарь</button>
 </form><button class="primary" id="sso-login" disabled hidden>Войти через OdanLab</button><p class="sub" id="auth-status" role="status">Проверяем доступность входа…</p></section>
-<section id="workspace" hidden><div class="toolbar"><h1>Календарь лаборатории</h1><div><button data-new="presence">Моё присутствие</button><button data-new="busy">Занятость</button><button data-new="meeting" class="primary">Предложить встречу</button></div></div>
+<section id="workspace" hidden><div class="toolbar"><h1>Календарь лаборатории</h1><div><button data-new="presence">Мой статус</button><button data-new="busy">Занятость</button><button data-new="meeting" class="primary">Предложить встречу</button></div></div>
 <section class="card"><div class="toolbar"><h2 id="scope"></h2><div><button id="people">Выбрать людей</button><button id="all" hidden>Вся лаборатория</button></div></div>
 <nav><div><button data-nav="-1" aria-label="Предыдущая неделя">‹</button><strong id="week"></strong><button data-nav="1" aria-label="Следующая неделя">›</button><button data-nav="0">Сегодня</button></div><div><button id="seminar" data-new="seminar" hidden>Семинар</button><button id="google">Google Календарь</button></div></nav>
 <div class="week"><div class="dates" id="dates"></div><div id="grid" class="grid"></div><aside id="roster"></aside></div>
